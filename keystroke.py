@@ -93,6 +93,8 @@ def predict_and_store():
     MIN_KEYSTROKES = 8
     interval_minutes = 2
     summary_window = 20  # in minutes
+    max_intervals = summary_window // interval_minutes
+
     predictions = []
 
     while True:
@@ -100,25 +102,22 @@ def predict_and_store():
 
         features = calculate_features(duration_minutes=interval_minutes)
         total_keys = int((features[2] * (interval_minutes * 60)) / 60)
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if total_keys < MIN_KEYSTROKES:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"[{timestamp}] Skipped: not enough keystrokes ({total_keys} pressed)")
-            continue
+            predictions.append(None)
+        else:
+            features_df = pd.DataFrame([features], columns=feature_names)
+            pred_label = model.predict(features_df)[0]
+            pred_prob = model.predict_proba(features_df)[0][1]
+            predictions.append(pred_label)
+            print(f"[{timestamp}] 2-min Prediction: {pred_label} (stress prob: {pred_prob:.2f})")
 
-        features_df = pd.DataFrame([features], columns=feature_names)
-        pred_label = model.predict(features_df)[0]
-        pred_prob = model.predict_proba(features_df)[0][1]
-
-        predictions.append(pred_label)
-
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{timestamp}] 2-min Prediction: {pred_label} (stress prob: {pred_prob:.2f})")
-
-        # If 20 mins completed (i.e. 10 predictions)
-        if len(predictions) == summary_window // interval_minutes:
-            stress_count = sum(predictions)
-            stress_percentage = (stress_count / len(predictions)) * 100
+        # If 20 minutes (10 intervals) passed
+        if len(predictions) == max_intervals:
+            stress_count = sum(1 for p in predictions if p == 1)
+            stress_percentage = (stress_count / max_intervals) * 100
             majority_label = 1 if stress_percentage >= 50 else 0
 
             summary_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -130,7 +129,8 @@ def predict_and_store():
             )
             conn_thread.commit()
 
-            predictions.clear()  # reset for next 20-min block
+            predictions.clear()  # reset for next 20-minute block
+
 
 def main():
     print("Starting keystroke capture. Press ESC to stop.")
