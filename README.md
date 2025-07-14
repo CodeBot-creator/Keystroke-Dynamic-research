@@ -1,4 +1,4 @@
-😌 Multimodal Stress Detection & Recommendation System (Keystroke Module)
+😌 Multimodal Stress Detection & Recommendation System (Keystroke Module)<br>
 📌 Keystroke Dynamics Overview
 This module captures users' typing behavior to detect stress in real-time using machine learning techniques.
 
